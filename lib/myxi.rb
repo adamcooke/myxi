@@ -1,3 +1,5 @@
+require 'myxi/exchange'
+
 module Myxi
   class << self
 
