@@ -195,7 +195,7 @@ want to mount the socket server within your application's domain. In development
 you'll connect to something like this:
 
 ```
-ws://localhost:5005/push.ws
+ws://localhost:5005/pushwss
 ```
 
 As soon as you connect, you'll be sent a `Welcome` socket event message which will
