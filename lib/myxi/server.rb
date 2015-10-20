@@ -30,7 +30,7 @@ module Myxi
 
           ws.onopen do |handshake|
             case handshake.path
-            when /\A\/push\.ws/
+            when /\A\/pushwss/
               log "[#{session.id}] Connection opened"
               ws.send({:event => 'Welcome', :payload => {:id => session.id}}.to_json)
 
