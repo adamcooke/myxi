@@ -3,6 +3,8 @@ require 'myxi/exchange'
 module Myxi
   class << self
 
+    class Error < StandardError; end
+
     #
     # Return a bunny client instance which will be used by the web socket service.
     # This can be overriden if you already have a connection RabbitMQ available
