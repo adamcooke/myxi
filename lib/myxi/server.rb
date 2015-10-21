@@ -36,7 +36,10 @@ module Myxi
 
               session.queue = Myxi.channel.queue("", :exclusive => true)
               session.queue.subscribe do |delivery_info, properties, body|
-                ws.send(body.force_encoding('UTF-8'))
+                if hash = JSON.parse(body) rescue nil
+                  hash['mq'] = {'e' => delivery_info.exchange, 'rk' => delivery_info.routing_key}
+                  ws.send(hash.to_json.force_encoding('UTF-8'))
+                end
               end
             else
               log "[#{session.id}] Invalid path"
