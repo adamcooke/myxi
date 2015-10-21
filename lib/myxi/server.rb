@@ -36,7 +36,7 @@ module Myxi
 
               session.queue = Myxi.channel.queue("", :exclusive => true)
               session.queue.subscribe do |delivery_info, properties, body|
-                ws.send(body)
+                ws.send(body.force_encoding('UTF-8'))
               end
             else
               log "[#{session.id}] Invalid path"
