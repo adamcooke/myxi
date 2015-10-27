@@ -1,3 +1,5 @@
+require 'myxi/environment'
+
 module Myxi
   class Action
 
@@ -13,7 +15,12 @@ module Myxi
     end
 
     def execute(session, payload = {})
-      @block.call(session, payload)
+      environment = Environment.new(session, payload)
+      environment.instance_exec(session, payload, &@block)
+    rescue Environment::Error => e
+      session.send('Error', :error => e.class.to_s.split('::').last)
+    rescue => e
+      session.send('InternalError', :error => e.class.to_s, :message => e.message)
     end
 
   end
