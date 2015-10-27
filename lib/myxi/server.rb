@@ -55,7 +55,8 @@ module Myxi
 
           ws.onmessage do |msg|
             if ws.state == :connected
-              if json = JSON.parse(msg) rescue nil
+              json = JSON.parse(msg) rescue nil
+              if json.is_a?(Hash)
                 session.tag = json['tag'] || nil
                 payload = json['payload'] || {}
                 if action = Myxi::Action::ACTIONS[json['action'].to_sym]
