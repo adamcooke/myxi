@@ -19,18 +19,30 @@ module Myxi
       end
     end
 
-    def subscriptions
-      @subscriptions ||= []
+    def sessions
+      @sessions ||= []
+    end
+
+    def monitor_sessions
+      unless options[:touch_interval] == 0
+        Thread.new do
+          loop do
+            sessions.each(&:touch)
+            sleep options[:touch_interval] || 60
+          end
+        end
+      end
     end
 
     def run
       Myxi::Exchange.declare_all
       port = (options[:port] || ENV['MYXI_PORT'] || ENV['PORT'] || 5005).to_i
       puts "Running Myxi Web Socket Server on 0.0.0.0:#{port}"
+      monitor_sessions
       EM.run do
         EM::WebSocket.run(:host => options[:bind_address] || ENV['MYXI_BIND_ADDRESS'] || '0.0.0.0', :port => port) do |ws|
 
-          session = Session.new(self, ws)
+          sessions << session = Session.new(self, ws)
 
           ws.onopen do |handshake|
             case handshake.path
@@ -55,6 +67,7 @@ module Myxi
           ws.onclose do
             log "[#{session.id}] Disconnected"
             session.queue.delete if session.queue
+            sessions.delete(session)
           end
 
           ws.onmessage do |msg|

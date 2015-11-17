@@ -82,5 +82,22 @@ module Myxi
       end
     end
 
+    #
+    # Called by the server every so often whenever this session is active. This
+    # should verify that subscriptions are still valid etc...
+    #
+    def touch
+      subscriptions.each do |exchange_name, routing_keys|
+        if exchange = Myxi::Exchange::EXCHANGES[exchange_name.to_sym]
+          routing_keys.each do |routing_key|
+            unless exchange.can_subscribe?(routing_key, self.auth_object)
+              puts "[#{id}] Session is not longer allowed to subscibe to #{exchange_name}/#{routing_key}"
+              unsubscribe(exchange_name, routing_key)
+            end
+          end
+        end
+      end
+    end
+
   end
 end
