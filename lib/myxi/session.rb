@@ -53,13 +53,13 @@ module Myxi
     #
     # Unsubscribe this session from the given exchange name and routing key
     #
-    def unsubscribe(exchange_name, routing_key)
+    def unsubscribe(exchange_name, routing_key, auto = false)
       queue.unbind(exchange_name.to_s, :routing_key => routing_key.to_s)
       if subscriptions[exchange_name.to_s]
         subscriptions[exchange_name.to_s].delete(routing_key.to_s)
       end
       server.log "[#{id}] Unsubscribed from #{exchange_name}/#{routing_key}"
-      send('Unsubscribed', :exchange_name => exchange_name, :routing_key => routing_key)
+      send('Unsubscribed', :exchange_name => exchange_name, :routing_key => routing_key, :auto => auto)
     end
 
     #
@@ -92,7 +92,7 @@ module Myxi
           routing_keys.each do |routing_key|
             unless exchange.can_subscribe?(routing_key, self.auth_object)
               puts "[#{id}] Session is not longer allowed to subscibe to #{exchange_name}/#{routing_key}"
-              unsubscribe(exchange_name, routing_key)
+              unsubscribe(exchange_name, routing_key, true)
             end
           end
         end
