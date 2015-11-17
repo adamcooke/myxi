@@ -19,6 +19,10 @@ module Myxi
       end
     end
 
+    def subscriptions
+      @subscriptions ||= []
+    end
+
     def run
       Myxi::Exchange.declare_all
       port = (options[:port] || ENV['MYXI_PORT'] || ENV['PORT'] || 5005).to_i
@@ -26,7 +30,7 @@ module Myxi
       EM.run do
         EM::WebSocket.run(:host => options[:bind_address] || ENV['MYXI_BIND_ADDRESS'] || '0.0.0.0', :port => port) do |ws|
 
-          session = Session.new(ws)
+          session = Session.new(self, ws)
 
           ws.onopen do |handshake|
             case handshake.path

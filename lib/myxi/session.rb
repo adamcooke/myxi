@@ -4,12 +4,14 @@ require 'myxi/exchange'
 module Myxi
   class Session
 
-    def initialize(ws)
+    def initialize(server, ws)
+      @server = server
       @ws = ws
       @id  = SecureRandom.hex(8)
     end
 
     attr_reader :id
+    attr_reader :server
     attr_reader :ws
     attr_accessor :queue
     attr_accessor :auth_object
@@ -38,7 +40,7 @@ module Myxi
           queue.bind(exchange.exchange_name.to_s, :routing_key => routing_key.to_s)
           subscriptions[exchange_name.to_s] ||= []
           subscriptions[exchange_name.to_s] << routing_key.to_s
-          puts "[#{id}] Subscribed to #{exchange_name} / #{routing_key}"
+          server.log "[#{id}] Subscribed to #{exchange_name} / #{routing_key}"
           send('Subscribed', :exchange => exchange_name, :routing_key => routing_key)
         else
           send('Error', :error => 'SubscriptionDenied', :exchange => exchange_name, :routing_key => routing_key)
@@ -56,6 +58,7 @@ module Myxi
       if subscriptions[exchange_name.to_s]
         subscriptions[exchange_name.to_s].delete(routing_key.to_s)
       end
+      server.log "[#{id}] Unsubscribed from #{exchange_name}/#{routing_key}"
       send('Unsubscribed', :exchange_name => exchange_name, :routing_key => routing_key)
     end
 
