@@ -23,3 +23,7 @@ Myxi::Action.add(:Unsubscribe) do |session, payload|
     session.unsubscribe_all
   end
 end
+
+Myxi::Action.add(:ListSubscriptions) do |session, payload|
+  session.send "YourSubscriptions", :subscriptions => session.subscriptions
+end
