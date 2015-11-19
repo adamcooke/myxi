@@ -1,4 +1,5 @@
 require 'myxi/exchange'
+require 'myxi/railtie' if defined?(Rails)
 
 module Myxi
   class << self
