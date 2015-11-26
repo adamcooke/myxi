@@ -27,3 +27,7 @@ end
 Myxi::Action.add(:ListSubscriptions) do |session, payload|
   session.send "YourSubscriptions", :subscriptions => session.subscriptions
 end
+
+Myxi::Action.add(:Ping) do |session, payload|
+  session.send "Pong", :time => Time.now.to_i
+end
