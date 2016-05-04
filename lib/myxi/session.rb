@@ -28,7 +28,7 @@ module Myxi
     # Send an event back to the client on this session
     #
     def send(name, payload = {})
-      ws.send({:event => name, :tag => tag, :payload => payload}.to_json)
+      ws.send({:event => name, :tag => tag, :payload => payload}.to_json.force_encoding('UTF-8'))
     end
 
     #
