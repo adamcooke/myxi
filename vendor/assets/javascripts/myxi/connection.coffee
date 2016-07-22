@@ -31,11 +31,13 @@ class Myxi.Connection
         @_markSubscriptionAsSubscribed(data['payload']['exchange'], data['payload']['routing_key'])
       else if data['event'] == 'Unsubscribed'
         @_removeSubscription(data['payload']['exchange_name'], data['payload']['routing_key'])
+      else if data['event'] == 'Error' && data['payload']['error'] == 'SubscriptionDenied'
+        @_removeSubscription(data['payload']['exchange'], data['payload']['routing_key'])
       else
-        if data['mq'] && subscription = @subscriptions["#{data['mq']['e']}::#{data['mq']['rk']}"]
+        if data['mq'] && subscription = @subscriptions[Myxi.Subscription.keyFor(data['mq']['e'], data['mq']['rk'])]
           subscription._receiveMessage(data['event'], data['payload'], data['tag'])
-        else
-          @_runCallbacks(data['event'], data['payload'], data['tag'])
+        @_runCallbacks(data['event'], data['payload'], data['tag'], data['mq'])
+
       @_runCallbacks('SocketMessageReceived', data)
 
     @websocket.onclose = (event)=>
@@ -74,23 +76,25 @@ class Myxi.Connection
     @callbacks[event] ||= []
     @callbacks[event].push(callback)
 
-  _runCallbacks: (event, payload, tag)->
-    console.log "Running callbacks for #{event} event"
+  _runCallbacks: (event, payload, tag, mq)->
     if callbacks = @callbacks[event]
       for callback in callbacks
-        callback.call(this, payload, tag)
-
+        callback.call(this, payload, tag, mq)
 
   subscribe: (exchange, routingKey)->
-    subscription = new Myxi.Subscription(this, exchange, routingKey)
-    @subscriptions[subscription.key()] = subscription
+    if existingSubscription = @subscriptions[Myxi.Subscription.keyFor(exchange, routingKey)]
+      existingSubscription
+    else
+      subscription = new Myxi.Subscription(this, exchange, routingKey)
+      @subscriptions[subscription.key()] = subscription
+      subscription
 
   _markSubscriptionAsSubscribed: (exchange, routingKey)->
-    if subscription = @subscriptions["#{exchange}::#{routingKey}"]
+    if subscription = @subscriptions[Myxi.Subscription.keyFor(exchange, routingKey)]
       subscription._isSubscribed()
 
   _removeSubscription: (exchange, routingKey)->
-    key = "#{exchange}::#{routingKey}"
+    key = Myxi.Subscription.keyFor(exchange, routingKey)
     if subscription = @subscriptions[key]
       subscription._isUnsubscribed()
       delete @subscriptions[key]

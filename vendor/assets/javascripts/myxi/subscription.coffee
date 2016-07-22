@@ -1,6 +1,12 @@
 window.Myxi ||= {}
 class Myxi.Subscription
 
+  @keyFor: (exchange, routingKey)->
+    key = exchange
+    if routingKey?
+      key = "#{key}::#{routingKey}"
+    key
+
   constructor: (connection, exchange, routingKey)->
     @connection = connection
     @exchange = exchange
@@ -14,7 +20,7 @@ class Myxi.Subscription
     @connection.sendAction('Subscribe', {'exchange': @exchange, 'routing_key': @routingKey})
 
   key: ()->
-    "#{@exchange}::#{@routingKey}"
+    Myxi.Subscription.keyFor(@exchange, @routingKey)
 
   unsubscribe: ()->
     if @connection.sendAction('Unsubscribe', {'exchange': @exchange, 'routing_key': @routingKey})
