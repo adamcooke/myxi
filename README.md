@@ -265,3 +265,79 @@ some details of the error in the payload. For example:
   }
 }
 ```
+
+### Using the included javascript library
+
+Myxi has a client library which you can use to talk to the Myxi backend
+
+#### Installation
+
+To install this, you just need to add it into your application's javascript file
+and the asset pipeline will take care of the rest of the installation. Just pop
+the following into `app/assets/javascripts/application.coffee` (or whatever file you
+have which is appropriate).
+
+```
+##= require myxi
+```
+
+In addition to this, you'll need to provide some config in your HTML views so you
+can tell the client how to connect to the web socket server. It's usually best
+to add a `<meta>` tag with this information.
+
+```
+<meta name='myxi-host' content='ws://localhost:5300'>
+```
+
+#### Usage
+
+To connect, subscribe and send actions you can use the examples below (in Coffeescript)##
+
+```coffeescript
+# Get the host address and create the web socket connnection. This will
+# automatically attempt to connect to the server.
+webSocketHost = $('[metaname=myxi-host]').attr('content')
+webSocket = new Myxi.Connection(webSocketHost)
+
+# Describe how you want to authenticate clients. This block will be executed
+# whenever the server connects.
+webSocket.authentication ->
+  # When we receive a message saying we're authenticated, tell the web socket
+  # that we've authenticated so it can continue with the post-connection tasks.
+  webSocket.on 'Authenticated', -> webSocket.isAuthenticated()
+
+  # Send the authentication
+  sessionID = $('[metaname=myxi-session]').attr('content')
+  webSocket.sendAction 'Authenticate', {'sessionID': sessionID}
+
+# Subscribe to something
+subscription = webSocket.subscribe('myChannel', 1234)
+subscription.on 'someEvent', (payload, tag)->
+  console.log "Got some event for myChannel 1234"
+
+# Unsubscribe
+subscription.unsubscribe()
+
+# Find a subscription object which you've lost but is still connected
+subscription = webSocket.subscriptions["myChannel::1234"]
+
+# Sending actions
+webSocket.sendAction('SayHello', {name: 'Adam'})
+
+# Listening for events
+webSocket.on 'Hello', (payload, tag)->
+  console.log "The server said hello"
+
+# Other global events which can be listened to
+webSocket.on 'SocketConnected'
+webSocket.on 'SocketDisconnected'
+webSocket.on 'SocketMessageReceived'
+webSocket.on 'SocketAuthenticated'
+```
+
+#### Server Disconnections
+
+If the web socket server disconnected unexpectedly, the client will automatically
+attempt to reconnect every 5 seconds. When the client connects again, it will
+automatically attempt to re-authenticate and subscribe to all the channels
+that it was subscribed to when it disconnected.
