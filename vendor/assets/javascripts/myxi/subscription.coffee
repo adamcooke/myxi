@@ -14,6 +14,7 @@ class Myxi.Subscription
     @subscribed = false
     @reconnect = true
     @callbacks = {}
+    @messageHandlers = {}
     @subscribe() if @connection.connected
 
   subscribe: ()->
@@ -26,6 +27,16 @@ class Myxi.Subscription
     if @connection.sendAction('Unsubscribe', {'exchange': @exchange, 'routing_key': @routingKey})
       @subscribed = false
       @reconnect = false
+      true
+    else
+      false
+
+  addMessageHandler: (name, handler, param)->
+    @messageHandlers[name] = {handler: handler, param: param}
+
+  removeMessageHandler: (name)->
+    if @messageHandlers[name]
+      delete @messageHandlers[name]
       true
     else
       false
@@ -46,3 +57,5 @@ class Myxi.Subscription
     if callbacks = @callbacks[event]
       for callback in callbacks
         callback.call(this, payload, tag)
+    for handler, opts of @messageHandlers
+      opts.handler.call(opts.param, this, event, payload, tag)
