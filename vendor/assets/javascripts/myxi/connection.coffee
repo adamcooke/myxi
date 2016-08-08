@@ -44,12 +44,15 @@ class Myxi.Connection
       if @connected
         @_runCallbacks('SocketDisconnected')
       @connected = false
+      @authenticated = false
       @_markAllSubscriptionsAsUnsubscribed()
       console.log "Server disconnected."
       if @reconnect
         @reconnectTimer = setTimeout =>
           @connect()
         , 5000
+
+    true
 
   disconnect: ->
     @reconnect = false
