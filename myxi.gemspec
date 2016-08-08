@@ -7,7 +7,7 @@ Gem::Specification.new do |s|
   s.homepage      = "https://github.com/adamcooke/myxi"
   s.licenses      = ['MIT']
   s.version       = Myxi::VERSION
-  s.files         = Dir.glob("{bin,lib}/**/*")
+  s.files         = Dir.glob("{bin,lib,vendor}/**/*")
   s.require_paths = ["lib"]
   s.authors       = ["Adam Cooke"]
   s.email         = ["me@adamcooke.io"]
