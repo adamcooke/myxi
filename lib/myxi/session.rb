@@ -40,7 +40,7 @@ module Myxi
           queue.bind(exchange.exchange_name.to_s, :routing_key => routing_key.to_s)
           subscriptions[exchange_name.to_s] ||= []
           subscriptions[exchange_name.to_s] << routing_key.to_s
-          server.log "[#{id}] Subscribed to #{exchange_name} / #{routing_key}"
+          Myxi.logger.debug "[#{id}] Subscribed to #{exchange_name} / #{routing_key}"
           send('Subscribed', :exchange => exchange_name, :routing_key => routing_key)
         else
           send('Error', :error => 'SubscriptionDenied', :exchange => exchange_name, :routing_key => routing_key)
@@ -58,7 +58,7 @@ module Myxi
       if subscriptions[exchange_name.to_s]
         subscriptions[exchange_name.to_s].delete(routing_key.to_s)
       end
-      server.log "[#{id}] Unsubscribed from #{exchange_name}/#{routing_key}"
+      Myxi.logger.debug "[#{id}] Unsubscribed from #{exchange_name}/#{routing_key}"
       send('Unsubscribed', :exchange_name => exchange_name, :routing_key => routing_key, :auto => auto)
     end
 
