@@ -13,6 +13,7 @@ module Myxi
     def logger
       @logger ||= Logger.new(STDOUT)
     end
+    attr_writer :logger
 
     #
     # Return a bunny client instance which will be used by the web socket service.
