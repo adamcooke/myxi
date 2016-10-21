@@ -1,3 +1,4 @@
+require 'logger'
 require 'myxi/exchange'
 require 'myxi/railtie' if defined?(Rails)
 
@@ -5,6 +6,13 @@ module Myxi
   class << self
 
     class Error < StandardError; end
+
+    #
+    # Return a logger
+    #
+    def logger
+      @logger ||= Logger.new(STDOUT)
+    end
 
     #
     # Return a bunny client instance which will be used by the web socket service.

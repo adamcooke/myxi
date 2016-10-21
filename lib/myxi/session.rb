@@ -91,7 +91,7 @@ module Myxi
         if exchange = Myxi::Exchange::EXCHANGES[exchange_name.to_sym]
           routing_keys.each do |routing_key|
             unless exchange.can_subscribe?(routing_key, self.auth_object)
-              puts "[#{id}] Session is not longer allowed to subscibe to #{exchange_name}/#{routing_key}"
+              Myxi.logger.info "[#{id}] Session is not longer allowed to subscibe to #{exchange_name}/#{routing_key}"
               unsubscribe(exchange_name, routing_key, true)
             end
           end

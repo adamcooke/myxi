@@ -13,12 +13,6 @@ module Myxi
       @options = options
     end
 
-    def log(message)
-      if options[:debug]
-        puts message
-      end
-    end
-
     def sessions
       @sessions ||= []
     end
@@ -37,7 +31,7 @@ module Myxi
     def run
       Myxi::Exchange.declare_all
       port = (options[:port] || ENV['MYXI_PORT'] || ENV['PORT'] || 5005).to_i
-      puts "Running Myxi Web Socket Server on 0.0.0.0:#{port}"
+      Myxi.logger.info "Running Myxi Web Socket Server on 0.0.0.0:#{port}"
       monitor_sessions
       EM.run do
         EM::WebSocket.run(:host => options[:bind_address] || ENV['MYXI_BIND_ADDRESS'] || '0.0.0.0', :port => port) do |ws|
@@ -47,7 +41,7 @@ module Myxi
           ws.onopen do |handshake|
             case handshake.path
             when /\A\/pushwss/
-              log "[#{session.id}] Connection opened"
+              Myxi.logger.debug "[#{session.id}] Connection opened"
               ws.send({:event => 'Welcome', :payload => {:id => session.id}}.to_json)
 
               session.queue = Myxi.channel.queue("", :exclusive => true)
@@ -58,14 +52,14 @@ module Myxi
                 end
               end
             else
-              log "[#{session.id}] Invalid path"
+              Myxi.logger.debug "[#{session.id}] Invalid path"
               ws.send({:event => 'Error', :payload => {:error => 'PathNotFound'}}.to_json)
               ws.close
             end
           end
 
           ws.onclose do
-            log "[#{session.id}] Disconnected"
+            Myxi.logger.debug "[#{session.id}] Disconnected"
             session.queue.delete if session.queue
             sessions.delete(session)
           end
