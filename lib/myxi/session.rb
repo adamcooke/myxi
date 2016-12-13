@@ -37,11 +37,15 @@ module Myxi
     def subscribe(exchange_name, routing_key)
       if exchange = Myxi::Exchange::EXCHANGES[exchange_name.to_sym]
         if exchange.can_subscribe?(routing_key, self.auth_object)
-          queue.bind(exchange.exchange_name.to_s, :routing_key => routing_key.to_s)
           subscriptions[exchange_name.to_s] ||= []
-          subscriptions[exchange_name.to_s] << routing_key.to_s
-          Myxi.logger.debug "[#{id}] Subscribed to #{exchange_name} / #{routing_key}"
-          send('Subscribed', :exchange => exchange_name, :routing_key => routing_key)
+          if subscriptions[exchange_name.to_s].include?(routing_key.to_s)
+            send('Error', :error => 'AlreadySubscribed', :exchange => exchange_name, :routing_key => routing_key)
+          else
+            queue.bind(exchange.exchange_name.to_s, :routing_key => routing_key.to_s)
+            subscriptions[exchange_name.to_s] << routing_key.to_s
+            Myxi.logger.debug "[#{id}] Subscribed to #{exchange_name} / #{routing_key}"
+            send('Subscribed', :exchange => exchange_name, :routing_key => routing_key)
+          end
         else
           send('Error', :error => 'SubscriptionDenied', :exchange => exchange_name, :routing_key => routing_key)
         end

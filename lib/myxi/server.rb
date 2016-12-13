@@ -70,7 +70,7 @@ module Myxi
               if json.is_a?(Hash)
                 session.tag = json['tag'] || nil
                 payload = json['payload'] || {}
-                if action = Myxi::Action::ACTIONS[json['action'].to_sym]
+                if action = Myxi::Action::ACTIONS[json['action'].to_s.to_sym]
                   action.execute(session, payload)
                 else
                   ws.send({:event => 'Error', :tag => session.tag, :payload => {:error => 'InvalidAction'}}.to_json)
