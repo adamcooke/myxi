@@ -59,8 +59,7 @@ module Myxi
           end
 
           ws.onclose do
-            Myxi.logger.debug "[#{session.id}] Disconnected"
-            session.queue.delete if session.queue
+            session.close
             sessions.delete(session)
           end
 

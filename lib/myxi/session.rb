@@ -8,6 +8,7 @@ module Myxi
       @server = server
       @ws = ws
       @id  = SecureRandom.hex(8)
+      @closure_callbacks = []
     end
 
     attr_reader :id
@@ -101,6 +102,24 @@ module Myxi
           end
         end
       end
+    end
+
+    #
+    # Called when the connection for this session is closed
+    #
+    def close
+      Myxi.logger.debug "[#{id}] Session closed"
+      self.queue.delete if self.queue
+      while callback = @closure_callbacks.shift
+        callback.call
+      end
+    end
+
+    #
+    # Adds a callback to be executed when this session closes
+    #
+    def on_close(&block)
+      @closure_callbacks << block
     end
 
   end
