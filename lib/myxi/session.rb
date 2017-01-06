@@ -9,6 +9,7 @@ module Myxi
       @ws = ws
       @id  = SecureRandom.hex(8)
       @closure_callbacks = []
+      @data = {}
     end
 
     attr_reader :id
@@ -17,6 +18,15 @@ module Myxi
     attr_accessor :queue
     attr_accessor :auth_object
     attr_accessor :tag
+
+    def [](name)
+      @data[name.to_sym]
+    end
+
+    def []=(name, value)
+      Myxi.logger.debug "[#{id}] Stored '#{name}' with '#{value}'"
+      @data[name.to_sym] = value
+    end
 
     #
     # Keep track of all subscriptions
