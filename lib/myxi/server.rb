@@ -47,8 +47,10 @@ module Myxi
               session.queue = Myxi.channel.queue("", :exclusive => true)
               session.queue.subscribe do |delivery_info, properties, body|
                 if hash = JSON.parse(body) rescue nil
+                  payload = hash.to_json.force_encoding('UTF-8')
+                  Myxi.logger.debug "[#{session.id}] \e[45;37mEVENT\e[0m \e[35m#{payload}\e[0m (to #{delivery_info.exchange}/#{delivery_info.routing_key})"
                   hash['mq'] = {'e' => delivery_info.exchange, 'rk' => delivery_info.routing_key}
-                  ws.send(hash.to_json.force_encoding('UTF-8'))
+                  ws.send(payload)
                 end
               end
             else
@@ -69,6 +71,7 @@ module Myxi
               if json.is_a?(Hash)
                 session.tag = json['tag'] || nil
                 payload = json['payload'] || {}
+                Myxi.logger.debug "[#{session.id}] \e[44;37mACTION\e[0m \e[34m#{json}\e[0m"
                 if action = Myxi::Action::ACTIONS[json['action'].to_s.to_sym]
                   action.execute(session, payload)
                 else

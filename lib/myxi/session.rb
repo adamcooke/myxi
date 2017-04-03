@@ -39,7 +39,9 @@ module Myxi
     # Send an event back to the client on this session
     #
     def send(name, payload = {})
-      ws.send({:event => name, :tag => tag, :payload => payload}.to_json.force_encoding('UTF-8'))
+      payload = {:event => name, :tag => tag, :payload => payload}.to_json.force_encoding('UTF-8')
+      ws.send(payload)
+      Myxi.logger.debug "[#{id}] \e[46;37mMESSAGE\e[0m \e[36m#{payload}\e[0m"
     end
 
     #
@@ -54,7 +56,7 @@ module Myxi
           else
             queue.bind(exchange.exchange_name.to_s, :routing_key => routing_key.to_s)
             subscriptions[exchange_name.to_s] << routing_key.to_s
-            Myxi.logger.debug "[#{id}] Subscribed to #{exchange_name} / #{routing_key}"
+            Myxi.logger.debug "[#{id}] \e[42;37mSUBSCRIBED\e[0m \e[32m#{exchange_name} / #{routing_key}\e[0m"
             send('Subscribed', :exchange => exchange_name, :routing_key => routing_key)
           end
         else
@@ -73,7 +75,7 @@ module Myxi
       if subscriptions[exchange_name.to_s]
         subscriptions[exchange_name.to_s].delete(routing_key.to_s)
       end
-      Myxi.logger.debug "[#{id}] Unsubscribed from #{exchange_name}/#{routing_key}"
+      Myxi.logger.debug "[#{id}] \e[42;37mUNSUBSCRIBED\e[0m \e[32m#{exchange_name} / #{routing_key}\e[0m"
       send('Unsubscribed', :exchange_name => exchange_name, :routing_key => routing_key, :auto => auto)
     end
 

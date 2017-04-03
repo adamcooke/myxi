@@ -20,6 +20,8 @@ module Myxi
     rescue Environment::Error => e
       session.send('Error', :error => e.class.to_s.split('::').last)
     rescue => e
+      Myxi.logger.debug "[#{session.id}] \e[41;37mERROR\e[0m \e[41m#{e.class.to_s} #{e.message}\e[0m"
+      e.backtrace { |br| Myxi.logger.debug "[#{session.id}] \e[41;37mERROR\e[0m #{br}" }
       session.send('InternalError', :error => e.class.to_s, :message => e.message)
     end
 
