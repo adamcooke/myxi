@@ -71,7 +71,7 @@ module Myxi
               if json.is_a?(Hash)
                 session.tag = json['tag'] || nil
                 payload = json['payload'] || {}
-                Myxi.logger.debug "[#{session.id}] \e[44;37mACTION\e[0m \e[34m#{json}\e[0m"
+                Myxi.logger.debug "[#{session.id}] \e[43;37mACTION\e[0m \e[33m#{json}\e[0m"
                 if action = Myxi::Action::ACTIONS[json['action'].to_s.to_sym]
                   action.execute(session, payload)
                 else
