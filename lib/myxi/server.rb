@@ -17,25 +17,23 @@ module Myxi
       @sessions ||= []
     end
 
-    def monitor_sessions
-      unless options[:touch_interval] == 0
-        Thread.new do
-          loop do
-            sessions.each(&:touch)
-            sleep options[:touch_interval] || 60
-          end
-        end
-      end
-    end
-
     def run
       Myxi::Exchange.declare_all
       port = (options[:port] || ENV['MYXI_PORT'] || ENV['PORT'] || 5005).to_i
       Myxi.logger.info "Running Myxi Web Socket Server on 0.0.0.0:#{port}"
-      monitor_sessions
-      EM.run do
-        EM::WebSocket.run(:host => options[:bind_address] || ENV['MYXI_BIND_ADDRESS'] || '0.0.0.0', :port => port) do |ws|
 
+      if ENV['SERVER_FD']
+        @server = TCPServer.for_fd(ENV['SERVER_FD'].to_i)
+        Process.kill('TERM', Process.ppid)
+      else
+        @server = TCPServer.open(options[:bind_address] || ENV['MYXI_BIND_ADDRESS'], port)
+        ENV['SERVER_FD'] = @server.to_i.to_s
+      end
+      @server.autoclose = false
+      @server.close_on_exec = false
+
+      EM.run do
+        wss = EM::WebSocket.run(:socket => @server) do |ws|
           sessions << session = Session.new(self, ws)
 
           ws.onopen do |handshake|
@@ -83,8 +81,62 @@ module Myxi
             end
           end
         end
+
+        unless options[:touch_interval] == 0
+          EventMachine.add_periodic_timer(options[:touch_interval] || 60) do
+            sessions.each(&:touch)
+          end
+        end
+
+        Signal.trap("TERM") do
+          if @options[:shutdown_time]
+            EM.add_timer(0) do
+              Myxi.logger.info("Received TERM signal, beginning #{@options[:shutdown_time]} second shutdown.")
+            end
+            EM.stop_server(wss)
+            EventMachine.add_periodic_timer(1) do
+              @shutdown_timer ||= 0
+              sessions.each do |session|
+                if session.hash % @options[:shutdown_time] == @shutdown_timer % @options[:shutdown_time]
+                  session.ws.close
+                end
+              end
+              @shutdown_timer += 1
+
+              if sessions.size == 0
+                Myxi.logger.info("All clients disconnected. Shutdown complete.")
+                EM.stop
+              end
+            end
+          else
+            EM.add_timer(0) do
+              Myxi.logger.info("Received TERM signal, shutting down immediately")
+              EM.stop
+            end
+          end
+        end ## End tap
+
       end
 
+    end
+  end
+end
+
+
+module EventMachine
+  module WebSocket
+    def self.run(options)
+      host, port, socket = options.values_at(:host, :port, :socket)
+
+      if socket
+        EM.attach_server(socket, Connection, options) do |c|
+          yield c
+        end
+      else
+        EM.start_server(host, port, Connection, options) do |c|
+          yield c
+        end
+      end
     end
   end
 end
