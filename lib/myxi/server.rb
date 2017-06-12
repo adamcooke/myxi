@@ -17,6 +17,17 @@ module Myxi
       @sessions ||= []
     end
 
+    def monitor_sessions
+      unless options[:touch_interval] == 0
+        Thread.new do
+          loop do
+            sessions.each(&:touch)
+            sleep options[:touch_interval] || 60
+          end
+        end
+      end
+    end
+
     def run
       Myxi::Exchange.declare_all
       port = (options[:port] || ENV['MYXI_PORT'] || ENV['PORT'] || 5005).to_i
@@ -31,6 +42,8 @@ module Myxi
       end
       @server.autoclose = false
       @server.close_on_exec = false
+
+      monitor_sessions
 
       EM.run do
         wss = EM::WebSocket.run(:socket => @server) do |ws|
@@ -79,12 +92,6 @@ module Myxi
                 ws.send({:event => 'Error', :payload => {:error => 'InvalidJSON'}}.to_json)
               end
             end
-          end
-        end
-
-        unless options[:touch_interval] == 0
-          EventMachine.add_periodic_timer(options[:touch_interval] || 60) do
-            sessions.each(&:touch)
           end
         end
 
