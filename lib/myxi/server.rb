@@ -17,17 +17,6 @@ module Myxi
       @sessions ||= []
     end
 
-    def monitor_sessions
-      unless options[:touch_interval] == 0
-        Thread.new do
-          loop do
-            sessions.each(&:touch)
-            sleep options[:touch_interval] || 60
-          end
-        end
-      end
-    end
-
     def run
       Myxi::Exchange.declare_all
       port = (options[:port] || ENV['MYXI_PORT'] || ENV['PORT'] || 5005).to_i
@@ -43,9 +32,17 @@ module Myxi
       @server.autoclose = false
       @server.close_on_exec = false
 
-      monitor_sessions
-
       EM.run do
+        EM.add_periodic_timer(0.02) do
+          # Make sure Bunny threads have an opportunity to run every 20ms
+        end
+
+        unless options[:touch_interval] == 0
+          EM.add_periodic_timer(options[:touch_interval] || 60) do
+            sessions.each(&:touch)
+          end
+        end
+
         wss = EM::WebSocket.run(:socket => @server) do |ws|
           sessions << session = Session.new(self, ws)
 
