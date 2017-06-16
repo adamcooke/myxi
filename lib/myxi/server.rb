@@ -1,33 +1,88 @@
-require 'socket'
-require 'myxi/session'
+require 'nio'
+require 'timers'
+require 'myxi/listener'
+
 module Myxi
   class Server
+    attr_reader :selector, :timers, :options, :sessions
 
-  def initialize(event_loop, options)
-      @event_loop = event_loop
-      port = (options[:port] || ENV['MYXI_PORT'] || ENV['PORT'] || 5005).to_i
-      Myxi.logger.info "Running Myxi Web Socket Server on 0.0.0.0:#{port}"
-      if ENV['SERVER_FD']
-        @socket = TCPServer.for_fd(ENV['SERVER_FD'].to_i)
-        Process.kill('TERM', Process.ppid)
-      else
-        @socket = TCPServer.open(options[:bind_address] || ENV['MYXI_BIND_ADDRESS'], port)
-        ENV['SERVER_FD'] = @socket.to_i.to_s
+    def initialize(options = {})
+      @options = options
+      @selector = NIO::Selector.new
+      @timers = Timers::Group.new
+      @sessions = []
+    end
+
+    def wakeup
+      @selector.wakeup
+    end
+
+    def run
+      Myxi::Exchange.declare_all
+      @listener = Listener.new(self, options)
+
+      unless options[:touch_interval] == 0
+        @timers.every(options[:touch_interval] || 60) do
+          @sessions.each(&:touch)
+        end
       end
-      @socket.close_on_exec = false
-      monitor = event_loop.selector.register(@socket, :r)
-      monitor.value = self
-    end
 
-    def handle_r
-      # Incoming client connection
-      client_socket = @socket.accept
-      Session.new(@event_loop, client_socket)
-    end
+      Signal.trap("TERM") do
+        if @options[:shutdown_time]
+          @timers.after(0) do
+            Myxi.logger.info("Received TERM signal, beginning #{@options[:shutdown_time]} second shutdown.")
+          end
+          @listener.close
 
-    def close
-      @socket.close
-      @event_loop.selector.deregister(@socket)
+          @timers.every(1) do
+            @shutdown_timer ||= 0
+            @sessions.each do |session|
+              if session.hash % @options[:shutdown_time] == @shutdown_timer % @options[:shutdown_time]
+                session.close
+              end
+            end
+            @shutdown_timer += 1
+
+            if @sessions.size == 0
+              Myxi.logger.info("All clients disconnected. Shutdown complete.")
+              Process.exit(0)
+            end
+          end
+          wakeup
+        else
+          @timers.after(0) do
+            Myxi.logger.info("Received TERM signal, shutting down immediately")
+              Process.exit(0)
+          end
+        end
+      end
+
+      loop do
+        selector.select(@timers.wait_interval) do |monitor|
+          begin
+            monitor.value.handle_r if monitor.readable?
+            monitor.value.handle_w if monitor.writeable?
+          rescue => e
+            # Try to recover wherever possible
+            if monitor && monitor.value
+              if monitor.value == @listener
+                raise
+              else
+                monitor.value.close rescue nil
+              end
+            end
+            begin
+              Myxi.logger.info(e.class.to_s + ' ' + e.message.to_s)
+              e.backtrace.each do |line|
+                Myxi.logger.info('  ' + line)
+              end
+            rescue
+            end
+          end
+        end
+        @timers.fire
+      end
+
     end
 
   end
