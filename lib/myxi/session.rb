@@ -1,23 +1,78 @@
+require 'websocket'
 require 'json'
 require 'myxi/exchange'
+require 'myxi/eventable_socket'
 
 module Myxi
-  class Session
+  class Session < EventableSocket
 
-    def initialize(server, ws)
-      @server = server
-      @ws = ws
+    def initialize(event_loop, client_socket)
       @id  = SecureRandom.hex(8)
       @closure_callbacks = []
       @data = {}
+
+      @handshake = WebSocket::Handshake::Server.new
+      @state = :handshake
+      super
+      @event_loop.sessions << self
+
     end
 
     attr_reader :id
-    attr_reader :server
-    attr_reader :ws
-    attr_accessor :queue
+    #attr_accessor :queue
     attr_accessor :auth_object
     attr_accessor :tag
+
+    def on_connect
+      Myxi.logger.debug "[#{id}] Connection opened"
+      #send_text_data({:event => 'Welcome', :payload => {:id => id}}.to_json)
+      @queue = Myxi.channel.queue("", :exclusive => true)
+      @queue.subscribe do |delivery_info, properties, body|
+        if hash = JSON.parse(body) rescue nil
+          payload = hash.to_json.force_encoding('UTF-8')
+          Myxi.logger.debug "[#{id}] \e[45;37mEVENT\e[0m \e[35m#{payload}\e[0m (to #{delivery_info.exchange}/#{delivery_info.routing_key})"
+          hash['mq'] = {'e' => delivery_info.exchange, 'rk' => delivery_info.routing_key}
+          send_text_data(payload)
+        end
+      end
+    end
+
+    def handle_r
+      case @state
+      when :handshake
+        @handshake << @socket.readpartial(1048576)
+        if @handshake.finished?
+          write(@handshake.to_s)
+          if @handshake.valid?
+            on_connect
+            @state = :established
+            @frame_handler = WebSocket::Frame::Incoming::Server.new(version: @handshake.version)
+          else
+            close_after_write
+          end
+        end
+      when :established
+        @frame_handler << @socket.readpartial(1048576)
+        while frame = @frame_handler.next
+          msg = frame.data
+          json = JSON.parse(msg) rescue nil
+          if json.is_a?(Hash)
+            tag = json['tag'] || nil
+            payload = json['payload'] || {}
+            Myxi.logger.debug "[#{id}] \e[43;37mACTION\e[0m \e[33m#{json}\e[0m"
+            if action = Myxi::Action::ACTIONS[json['action'].to_s.to_sym]
+              action.execute(self, payload)
+            else
+              send_text_data({:event => 'Error', :tag => tag, :payload => {:error => 'InvalidAction'}}.to_json)
+            end
+          else
+            send_text_data({:event => 'Error', :payload => {:error => 'InvalidJSON'}}.to_json)
+          end
+        end
+      end
+    rescue EOFError, Errno::ECONNRESET, IOError
+      close
+    end
 
     def [](name)
       @data[name.to_sym]
@@ -40,7 +95,7 @@ module Myxi
     #
     def send(name, payload = {})
       payload = {:event => name, :tag => tag, :payload => payload}.to_json.force_encoding('UTF-8')
-      ws.send(payload)
+      send_text_data(payload)
       Myxi.logger.debug "[#{id}] \e[46;37mMESSAGE\e[0m \e[36m#{payload}\e[0m"
     end
 
@@ -54,7 +109,7 @@ module Myxi
           if subscriptions[exchange_name.to_s].include?(routing_key.to_s)
             send('Error', :error => 'AlreadySubscribed', :exchange => exchange_name, :routing_key => routing_key)
           else
-            queue.bind(exchange.exchange_name.to_s, :routing_key => routing_key.to_s)
+            @queue.bind(exchange.exchange_name.to_s, :routing_key => routing_key.to_s)
             subscriptions[exchange_name.to_s] << routing_key.to_s
             Myxi.logger.debug "[#{id}] \e[42;37mSUBSCRIBED\e[0m \e[32m#{exchange_name} / #{routing_key}\e[0m"
             send('Subscribed', :exchange => exchange_name, :routing_key => routing_key)
@@ -71,7 +126,7 @@ module Myxi
     # Unsubscribe this session from the given exchange name and routing key
     #
     def unsubscribe(exchange_name, routing_key, auto = false)
-      queue.unbind(exchange_name.to_s, :routing_key => routing_key.to_s)
+      @queue.unbind(exchange_name.to_s, :routing_key => routing_key.to_s)
       if subscriptions[exchange_name.to_s]
         subscriptions[exchange_name.to_s].delete(routing_key.to_s)
       end
@@ -121,10 +176,12 @@ module Myxi
     #
     def close
       Myxi.logger.debug "[#{id}] Session closed"
-      self.queue.delete if self.queue
+      @event_loop.sessions.delete(self)
+      @queue.delete if @queue
       while callback = @closure_callbacks.shift
         callback.call
       end
+      super
     end
 
     #
@@ -132,6 +189,11 @@ module Myxi
     #
     def on_close(&block)
       @closure_callbacks << block
+    end
+
+    def send_text_data(data)
+      sender = WebSocket::Frame::Outgoing::Server.new(version: @handshake.version, data: data, type: :text)
+      write(sender.to_s)
     end
 
   end
