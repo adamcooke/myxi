@@ -58,7 +58,13 @@ module Myxi
       end
 
       loop do
-        selector.select(@timers.wait_interval) do |monitor|
+        if @timers.wait_interval > 0
+          wait_interval = @timers.wait_interval
+        else
+          wait_interval = 0
+        end
+
+        selector.select(wait_interval) do |monitor|
           begin
             monitor.value.handle_r if monitor.readable?
             monitor.value.handle_w if monitor.writeable?
@@ -70,6 +76,8 @@ module Myxi
               else
                 monitor.value.close rescue nil
               end
+            else
+              raise
             end
             begin
               Myxi.logger.info(e.class.to_s + ' ' + e.message.to_s)
