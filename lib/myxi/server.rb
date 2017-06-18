@@ -31,8 +31,8 @@ module Myxi
         if @options[:shutdown_time]
           @timers.after(0) do
             Myxi.logger.info("Received TERM signal, beginning #{@options[:shutdown_time]} second shutdown.")
+            @listener.close
           end
-          @listener.close
 
           @timers.every(1) do
             @shutdown_timer ||= 0
