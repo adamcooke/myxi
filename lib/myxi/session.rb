@@ -25,13 +25,13 @@ module Myxi
 
     def on_connect
       Myxi.logger.debug "[#{id}] Connection opened"
-      #send_text_data({:event => 'Welcome', :payload => {:id => id}}.to_json)
+      send_text_data({:event => 'Welcome', :payload => {:id => id}}.to_json)
       @queue = Myxi.channel.queue("", :exclusive => true)
       @queue.subscribe do |delivery_info, properties, body|
         if hash = JSON.parse(body) rescue nil
+          hash['mq'] = {'e' => delivery_info.exchange, 'rk' => delivery_info.routing_key}
           payload = hash.to_json.force_encoding('UTF-8')
           Myxi.logger.debug "[#{id}] \e[45;37mEVENT\e[0m \e[35m#{payload}\e[0m (to #{delivery_info.exchange}/#{delivery_info.routing_key})"
-          hash['mq'] = {'e' => delivery_info.exchange, 'rk' => delivery_info.routing_key}
           send_text_data(payload)
         end
       end
