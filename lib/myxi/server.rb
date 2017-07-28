@@ -58,8 +58,9 @@ module Myxi
       end
 
       loop do
-        if @timers.wait_interval > 0
-          wait_interval = @timers.wait_interval
+        wi = @timers.wait_interval
+        if wi > 0
+          wait_interval = wi
         else
           wait_interval = 0
         end
