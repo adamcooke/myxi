@@ -35,7 +35,7 @@ module Myxi
     # Return a channel which this process can always use
     #
     def channel
-      @channel ||= create_channel
+      @channel ||= bunny.create_channel
     end
 
     #
@@ -69,13 +69,6 @@ module Myxi
         exch.publish({:event => event, :payload => payload}.to_json, :routing_key => routing_key.to_s)
       end
       true
-    end
-
-    #
-    # Create a new RabbitMQ channe;
-    #
-    def create_channel
-      bunny.create_channel
     end
 
   end

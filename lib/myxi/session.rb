@@ -26,8 +26,7 @@ module Myxi
     def on_connect
       Myxi.logger.debug "[#{id}] Connection opened"
       send_text_data({:event => 'Welcome', :payload => {:id => id}}.to_json)
-      @channel = Myxi.create_channel
-      @queue = @channel.queue("", :exclusive => true)
+      @queue = Myxi.channel.queue("", :exclusive => true)
       @queue.subscribe do |delivery_info, properties, body|
         if hash = JSON.parse(body) rescue nil
           hash['mq'] = {'e' => delivery_info.exchange, 'rk' => delivery_info.routing_key}
@@ -179,7 +178,6 @@ module Myxi
       Myxi.logger.debug "[#{id}] Session closed"
       @event_loop.sessions.delete(self)
       @queue.delete if @queue
-      @channel.close if @channel
       while callback = @closure_callbacks.shift
         callback.call
       end
