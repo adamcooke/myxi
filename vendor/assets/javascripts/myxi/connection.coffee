@@ -43,6 +43,7 @@ class Myxi.Connection
     @websocket.onclose = (event)=>
       if @connected
         @_runCallbacks('SocketDisconnected')
+      @_runCallbacks('SocketClosed')
       @connected = false
       @authenticated = false
       @_markAllSubscriptionsAsUnsubscribed()
