@@ -193,7 +193,7 @@ module Myxi
       @event_loop.sessions.delete(self)
       @queue.delete if @queue
       while callback = @closure_callbacks.shift
-        callback.call
+        callback.call(self)
       end
       super
     end
