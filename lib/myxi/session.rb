@@ -23,6 +23,14 @@ module Myxi
     attr_accessor :auth_object
     attr_accessor :tag
 
+    def remote_ip
+      if xff = @handshake.headers['x-forwarded-for']
+        xff.to_s.split(/\s+/)[0]
+      else
+        @socket.peeraddr(false)[3]
+      end
+    end
+
     def on_connect
       Myxi.logger.debug "[#{id}] Connection opened"
       send_text_data({:event => 'Welcome', :payload => {:id => id}}.to_json)
