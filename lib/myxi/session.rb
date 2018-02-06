@@ -68,19 +68,26 @@ module Myxi
       when :established
         @frame_handler << @socket.readpartial(1048576)
         while frame = @frame_handler.next
-          msg = frame.data
-          json = JSON.parse(msg) rescue nil
-          if json.is_a?(Hash)
-            tag = json['tag'] || nil
-            payload = json['payload'] || {}
-            Myxi.logger.debug "[#{id}] \e[43;37mACTION\e[0m \e[33m#{json}\e[0m"
-            if action = Myxi::Action::ACTIONS[json['action'].to_s.to_sym]
-              action.execute(self, payload)
+          case frame.type
+          when :close
+            send_close
+          when :ping
+            send_pong
+          when :text
+            msg = frame.data
+            json = JSON.parse(msg) rescue nil
+            if json.is_a?(Hash)
+              tag = json['tag'] || nil
+              payload = json['payload'] || {}
+              Myxi.logger.debug "[#{id}] \e[43;37mACTION\e[0m \e[33m#{json}\e[0m"
+              if action = Myxi::Action::ACTIONS[json['action'].to_s.to_sym]
+                action.execute(self, payload)
+              else
+                send_text_data({:event => 'Error', :tag => tag, :payload => {:error => 'InvalidAction'}}.to_json)
+              end
             else
-              send_text_data({:event => 'Error', :tag => tag, :payload => {:error => 'InvalidAction'}}.to_json)
+              send_text_data({:event => 'Error', :payload => {:error => 'InvalidJSON'}}.to_json)
             end
-          else
-            send_text_data({:event => 'Error', :payload => {:error => 'InvalidJSON'}}.to_json)
           end
         end
       end
@@ -102,6 +109,23 @@ module Myxi
     #
     def subscriptions
       @subscriptions ||= {}
+    end
+
+    #
+    # Send a websocket close frame and terminate the connection
+    #
+    def send_close
+      sender = WebSocket::Frame::Outgoing::Server.new(version: @handshake.version, type: :close)
+      write(sender.to_s)
+      close_after_write
+    end
+
+    #
+    # Send a websocket pong frame
+    #
+    def send_pong
+      sender = WebSocket::Frame::Outgoing::Server.new(version: @handshake.version, type: :pong)
+      write(sender.to_s)
     end
 
     #
