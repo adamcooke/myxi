@@ -73,7 +73,7 @@ module Myxi
             send_close
           when :ping
             send_pong
-          when :text
+          when :text, :binary
             msg = frame.data
             json = JSON.parse(msg) rescue nil
             if json.is_a?(Hash)

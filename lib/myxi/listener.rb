@@ -3,7 +3,10 @@ require 'myxi/session'
 module Myxi
   class Listener
 
-  def initialize(event_loop, options)
+    def initialize(event_loop, options)
+      # Try to maximize the file descriptor limit
+      Process.setrlimit(:NOFILE, Process.getrlimit(:NOFILE)[1]) rescue nil
+
       @event_loop = event_loop
       port = (options[:port] || ENV['MYXI_PORT'] || ENV['PORT'] || 5005).to_i
       Myxi.logger.info "Running Myxi Web Socket Server on 0.0.0.0:#{port}"
