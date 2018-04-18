@@ -11,7 +11,7 @@ module Myxi
     # Return a logger
     #
     def logger
-      @logger ||= Logger.new(STDOUT)
+      @logger ||= Logger.new(STDERR)
     end
     attr_writer :logger
 
