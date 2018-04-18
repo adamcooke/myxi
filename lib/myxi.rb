@@ -43,8 +43,8 @@ module Myxi
     #
     def exchanges
       @exchanges ||= begin
-        Myxi::Exchange::EXCHANGES.keys.inject({}) do |hash, name|
-          hash[name.to_sym] = channel.direct(name.to_s)
+        Myxi::Exchange::EXCHANGES.values.inject({}) do |hash, exch|
+          hash[exch.exchange_name.to_sym] = exch.declare
           hash
         end
       end
