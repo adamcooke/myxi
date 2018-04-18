@@ -2,6 +2,7 @@ require 'websocket'
 require 'json'
 require 'myxi/exchange'
 require 'myxi/eventable_socket'
+require 'myxi/action'
 
 module Myxi
   class Session < EventableSocket
