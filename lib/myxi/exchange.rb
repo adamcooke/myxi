@@ -4,6 +4,8 @@ module Myxi
     EXCHANGES = {}
 
     attr_accessor :exchange_name
+    attr_accessor :exchange_type
+    attr_accessor :exchange_durability
     attr_accessor :model_name
     attr_accessor :key_type
 
@@ -12,13 +14,15 @@ module Myxi
     end
 
     def self.declare_all
-      EXCHANGES.keys.each do |exch|
-        Myxi.channel.direct(exch.to_s)
+      EXCHANGES.values.each do |exch|
+        exch.declare
       end
     end
 
-    def initialize(exchange_name, model_name = nil, &block)
+    def initialize(exchange_name, model_name = nil, exchange_type = 'direct', exchange_durability = false, &block)
       @exchange_name = exchange_name.to_sym
+      @exchange_type = exchange_type.to_sym
+      @exchange_durability = exchange_durability
       @model_name = model_name
       @permission_block = block
     end
@@ -47,5 +51,8 @@ module Myxi
       end
     end
 
+    def declare
+      Myxi.channel.send(@exchange_type, @exchange_name.to_s, durable: @exchange_durability)
+    end
   end
 end
